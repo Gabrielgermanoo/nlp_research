@@ -1,45 +1,3 @@
-import numpy as np
-import nltk
-import pandas as pd
-from nltk import word_tokenize
-from nltk.tokenize import word_tokenize
-from nltk.probability import FreqDist
-import csv
-
-df = pd.read_csv('dados.csv', sep=',')
-evento_df = df[df['evento'].str.contains("ENEPET")]
-#print(evento_df)
-from nltk import word_tokenize
-
-
-def tokening(words):
-    for w in words:
-        word_tokenize(w);
-
-def find_words(text):
-    for t in text:
-        t = ''.join(letter for letter in t if letter.isalnum())
-    return text
-
-nltk.download('stopwords')
-words_lower = evento_df['descricao'].str.lower()
-words = find_words(words_lower)
-stopwords = nltk.corpus.stopwords.words('portuguese')
-stop = set(stopwords)
-
-no_stopwords = [w for w in words if w not in stop]
-
-cleanText = " ".join(no_stopwords)
-#print(cleanText)
-
-nltk.download('punkt')
-
-tokens = tokening(cleanText)
-#word_tokenize(cleanText)
-print(tokens)
-
-
-
 #import libres from tokenized, removing stowords, stemming and lemmatization
 import pandas as pd
 import nltk
@@ -52,6 +10,8 @@ from nltk.stem import RSLPStemmer
 nltk.download('rslp')
 import spacy
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
 
 
 def filter_data_event(data, evento=0):
@@ -96,7 +56,9 @@ def lemmatizing(data_tokenized):
   #Realizing lematizing in words
   return data_tokenized.apply(lambda x: [token.lemma_ for token in nlp(' '.join(x))])
 
-def pre_processing(data):
+def pre_processing(df):
+
+  data = df.copy()
   #Realizing pré-processing
   data['tokenized'] = tokenizing(data.descricao)
   data['removed_ponctuation'] = removed_ponctuation(data['tokenized'])
@@ -136,3 +98,45 @@ def plot_freq_words(data, qtd):
   plt.ylabel('Frequência', fontweight='bold')
   plt.xticks(rotation='vertical')
   plt.show()
+
+  
+def similarity_BOW(text1, text2):
+    '''
+    This function calculates the similarity between two texts
+        text1: candidate text for comparison
+        text2: reference text for comparison
+    '''
+
+    #Converting text in vector 
+    vec = CountVectorizer(ngram_range=(1, 1)) #considering unigrams
+    x1, x2 = vec.fit_transform([text1, text2])
+    t1, t2 = x1.toarray(), x2.toarray()
+
+    #Calculateted minimum frequency of each word (intersects between texts)
+    min = np.amin([t1, t2], axis = 0)
+
+    #counting number of intersections of words between texts
+    sum = np.sum(min)
+
+    #Counting unique words in vector of text1 (candidate for comparison)
+    count = np.sum(t1)
+
+    #Calculate 
+    percentil_similar = np.around((sum/count)*100, 2)
+
+    return percentil_similar
+
+#Faz pré-processamento de um texto digitado
+def preprocessing_text_input(text):
+    
+    '''Functions for realizing pre processing in new text '''
+
+    #Created dataframe with text 
+    df_text = pd.DataFrame()
+    df_text['descricao'] = [text]
+
+    #Apply prprocessing in text 
+    df_text = pre_processing(df_text)
+    df_text['lemma_text'] = (df_text.lemmatizing.apply(lambda x: ' '.join(x))).to_list()
+
+    return df_text.lemma_text[0]
